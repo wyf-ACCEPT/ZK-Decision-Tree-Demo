@@ -25,11 +25,12 @@ snarkjs groth16 prove multiplier2_0001.zkey witness.wtns proof.json public.json
 # 4. A specific pipeline: 
 
 # 4.1 trusted setup
-mkdir trusted-setup; cd trusted-setup
 POWER=12; CIRCOM="simpleDCT"
+mkdir trusted-setup; cd trusted-setup
 snarkjs powersoftau new bn128 $POWER pot${POWER}_00.ptau -v
 snarkjs powersoftau contribute pot${POWER}_00.ptau pot${POWER}_01.ptau -v
 snarkjs powersoftau prepare phase2 pot${POWER}_01.ptau pot${POWER}_02.ptau -v
+cd ..
 
 # 4.2 compile the circom
 circom ${CIRCOM}.circom --r1cs --wasm --sym
