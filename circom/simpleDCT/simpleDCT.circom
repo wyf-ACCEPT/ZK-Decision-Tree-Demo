@@ -17,8 +17,8 @@ template SimpleDCT() {
     component switcher = Switcher();
 
     switcher.sel <== out;
-    switcher.L <== 1;
-    switcher.R <== 0;
+    switcher.L <== 0;
+    switcher.R <== 1;
     switcher.outL ==> y;
 }
 
