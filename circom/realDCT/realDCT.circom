@@ -19,11 +19,11 @@ template HashLeftRight() {
     hash <== hasher.outs[0];
 }
 
-// Computes MiMC([left_child_hash, right_child_hash, curr_node_val, node_attribute, node_threshold])
+// Computes MiMC([left_child_hash, right_child_hash, symbol, node_attribute, node_threshold])
 template HashNodes() {
     signal input left_child_hash;
     signal input right_child_hash;
-    signal input curr_node_val;
+    signal input symbol;
     signal input node_attribute;
     signal input node_threshold;
     signal output hash;
@@ -32,7 +32,7 @@ template HashNodes() {
 
     hasher.ins[0] <== left_child_hash;
     hasher.ins[1] <== right_child_hash;
-    hasher.ins[2] <== curr_node_val;
+    hasher.ins[2] <== symbol;
     hasher.ins[3] <== node_attribute;
     hasher.ins[4] <== node_threshold;
     hasher.k <== 0;
