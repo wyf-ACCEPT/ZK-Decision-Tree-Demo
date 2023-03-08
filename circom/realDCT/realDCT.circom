@@ -19,22 +19,20 @@ template HashLeftRight() {
     hash <== hasher.outs[0];
 }
 
-// Computes MiMC([left_child_hash, right_child_hash, symbol, node_attribute, node_threshold])
+// Computes MiMC([left_child_hash, right_child_hash, node_attribute, node_threshold])
 template HashNodes() {
     signal input left_child_hash;
     signal input right_child_hash;
-    signal input symbol;
     signal input node_attribute;
     signal input node_threshold;
     signal output hash;
 
-    component hasher = MiMCSponge(5, 220, 1);
+    component hasher = MiMCSponge(4, 220, 1);
 
     hasher.ins[0] <== left_child_hash;
     hasher.ins[1] <== right_child_hash;
-    hasher.ins[2] <== symbol;
-    hasher.ins[3] <== node_attribute;
-    hasher.ins[4] <== node_threshold;
+    hasher.ins[2] <== node_attribute;
+    hasher.ins[3] <== node_threshold;
     hasher.k <== 0;
     hash <== hasher.outs[0];
 }
@@ -52,7 +50,7 @@ template DualMux() {
 }
 
 // at each level ensures attribute comparison follows properly, assuming each val/threshold is 64 bits max
-// assert true [if index=1, input<threshold] or [if index=0, input>=threshold], assert fails otherwise
+// assert true [if isLess=1, input<threshold] or [if isLess=0, input>=threshold], assert fails otherwise
 template ThreshComp(){
     signal input isLess;
     signal input input_val;
@@ -69,33 +67,29 @@ template ThreshComp(){
 }
 
 // Verifies that ADT path proof is correct for given merkle root and a leaf
-// pathIndices input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path
+// pathIndices input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path (1->left, 0->right)
 // nodeAttributes input is an array of attributes along the hashes computed
-// inputAttributes is the sorted array of attributes of the input
 // nodeThresholds input is an array of thresholds corresponding to the attributes (at the nodes) where the hashes are computed while computing hashes upto root
-// nodeVals input is an array of the node_vals on the hashes that are computed while computing hashes upto root 
+// inputAttributes is the sorted array of attributes of the input
 // leaf is the class of the input as predicted by the DT
 
 template ADTChecker(levels) {
     signal input leaf;
     signal input root;
-    signal input pathElements[levels];
+    // signal input pathElements[levels];
     signal input pathIndices[levels];
-    signal input nodeVals[levels];
     signal input nodeAttributes[levels];
-    signal input inputAttributes[levels];
     signal input nodeThresholds[levels];
+    signal input inputAttributes[levels];
     signal input randomness;
 
-    component selectors[levels];
     component isz = IsZero();
     component hasher_class;
     component hasher_root;
-    component hashers[levels];
     component comp;
+    component selectors[levels];
+    component hashers[levels];
     component thresh_comp[levels];
-
-    signal out1;
 
     signal output hash_root;
     signal output hash_dt;
