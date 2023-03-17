@@ -1,0 +1,5 @@
+*.ptau
+*.zkey
+*.wtns
+*.wasm
+node_modules
