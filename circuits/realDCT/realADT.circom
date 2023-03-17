@@ -4,7 +4,6 @@ pragma circom 2.0.3;
 include "../utils/mimcsponge.circom";
 include "../utils/comparators.circom";
 
-
 // Computes MiMC([left, right])
 template HashLeftRight() {
     signal input left;
@@ -36,20 +35,27 @@ template HashNode() {
 }
 
 // Computes MiMC([class, location])
-// template HashLeaf() {
+template HashLeaf() {
+    signal input leaf_class;
+    signal input leaf_location;
+    signal output hash;
+    component hasher = MiMCSponge(2, 220, 1);
 
-// }
+    hasher.ins[0] <== leaf_class;
+    hasher.ins[1] <== leaf_location;
+    hasher.k <== 0;
+    hash <== hasher.outs[0];
+}
 
-// if s == 0 returns [in[0], in[1]]
-// if s == 1 returns [in[1], in[0]]
+// Swap (in[0], in[1]) if swap==1
 template DualMux() {
     signal input in[2];
-    signal input s;
+    signal input swap;
     signal output out[2];
 
-    out[0] <== (in[1] - in[0]) * s + in[0];
-    out[1] <== (in[0] - in[1]) * s + in[1];
-    s * (1 - s) === 0;
+    out[0] <== (in[1] - in[0]) * swap + in[0];
+    out[1] <== (in[0] - in[1]) * swap + in[1];
+    swap * (1 - swap) === 0;
 }
 
 // At each level ensures attribute comparison follows properly, assuming each val/threshold is 64 bits max
@@ -58,7 +64,6 @@ template ThreshComp(){
     signal input is_less;
     signal input input_val;
     signal input threshold_val;
- 
     component isz = IsZero();
     component comp = LessThan(64);
     
@@ -70,61 +75,63 @@ template ThreshComp(){
 
 
 // Verifies that ADT path proof is correct for given merkle root and a leaf
-// `pathIndices` input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path (0->left, 1->right)
-// `nodeAttributes` input is an array of attributes along the hashes computed
-// `nodeThresholds` input is an array of thresholds corresponding to the attributes (at the nodes) where the hashes are computed while computing hashes upto root
-// `inputAttributes` is the sorted array of attributes of the input
+// `path_indices` input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path (0->left, 1->right)
+// `node_attributes` input is an array of attributes along the hashes computed
+// `node_thresholds` input is an array of thresholds corresponding to the attributes (at the nodes) where the hashes are computed while computing hashes upto root
+// `input_attributes` is the sorted array of attributes of the input
 // `leaf` is the class of the input as predicted by the DT
-
 template ADTChecker(levels) {
-    signal input leaf;
-    signal input root;
-    signal input pathElementHashes[levels];
-    signal input pathIndices[levels];
-    signal input nodeAttributes[levels];
-    signal input nodeThresholds[levels];
-    signal input inputAttributes[levels];
+    signal input leaf_class;
+    signal input leaf_location;
     signal input randomness;
+    signal input root;
+    signal input path_element_hashes[levels];
+    signal input path_indices[levels];
+    signal input node_attributes[levels];
+    signal input node_thresholds[levels];
+    signal input input_attributes[levels];
 
-    component hasher_root;
+    component leaf_hasher = HashLeaf();
+    component hasher_root = HashLeftRight();
     component selectors[levels];
     component hashers[levels];
     component thresh_comp[levels];
 
     signal output hash_root;
-
     var other_value;
+
+    leaf_hasher.leaf_class <== leaf_class;
+    leaf_hasher.leaf_location <== leaf_location;
 
     // Builds the authenticated decision tree (ADT) from the level above leaf upto the just below root
     for (var i=0; i<levels; i++) {
 
         // Orders left_child_val and right_child_val properly
-        other_value = (i==0) ? leaf : hashers[i - 1].hash;
         selectors[i] = DualMux();
-        selectors[i].in[0] <== pathElementHashes[i];
+        other_value = (i==0) ? leaf_hasher.hash : hashers[i - 1].hash;
+        selectors[i].in[0] <== path_element_hashes[i];
         selectors[i].in[1] <== other_value;
-        selectors[i].s <== pathIndices[i];
+        selectors[i].swap <== path_indices[i];
 
         // Hash(left_child_hash, right_child_hash, node_attribute, node_threshold)
         hashers[i] = HashNode();
         hashers[i].left_child_hash <== selectors[i].out[0];
         hashers[i].right_child_hash <== selectors[i].out[1];
-        hashers[i].node_attribute <== nodeAttributes[i];
-        hashers[i].node_threshold <== nodeThresholds[i];
+        hashers[i].node_attribute <== node_attributes[i];
+        hashers[i].node_threshold <== node_thresholds[i];
         
         // Threshold checking
         thresh_comp[i] = ThreshComp();
-        thresh_comp[i].is_less <== pathIndices[i];
-        thresh_comp[i].input_val <== inputAttributes[i];
-        thresh_comp[i].threshold_val <== nodeThresholds[i];
+        thresh_comp[i].is_less <== path_indices[i];
+        thresh_comp[i].input_val <== input_attributes[i];
+        thresh_comp[i].threshold_val <== node_thresholds[i];
     }
 
     // Root hash checking
-    hasher_root = HashLeftRight();
     hasher_root.left <== hashers[levels-1].hash;
     hasher_root.right <== randomness;
-    hash_root <== hasher_root.hash;
+    hasher_root.hash ==> hash_root;
     root === hash_root;
 }
 
-component main { public [ leaf, root, inputAttributes ] } =  ADTChecker(10);
+component main { public [ leaf_class, root, input_attributes ] } =  ADTChecker(10);
