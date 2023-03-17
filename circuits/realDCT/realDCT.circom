@@ -67,7 +67,7 @@ template ThreshComp(){
 
 
 // Verifies that ADT path proof is correct for given merkle root and a leaf
-// `pathIndices` input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path (1->left, 0->right)
+// `pathIndices` input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path (0->left, 1->right)
 // `nodeAttributes` input is an array of attributes along the hashes computed
 // `nodeThresholds` input is an array of thresholds corresponding to the attributes (at the nodes) where the hashes are computed while computing hashes upto root
 // `inputAttributes` is the sorted array of attributes of the input
@@ -84,7 +84,7 @@ template ADTChecker(levels) {
     signal input randomness;
 
     component isz = IsZero();
-    component hasher_class;
+    component hashers[0];
     component hasher_root;
     component comp;
     component selectors[levels];
@@ -100,72 +100,50 @@ template ADTChecker(levels) {
     selectors[0].in[1] <== leaf; //the class
     selectors[0].s <== pathIndices[0];
 
-    hasher_class = HashNodes();
-    hasher_class.left_child_hash <== selectors[0].out[0];
-    hasher_class.right_child_hash <== selectors[0].out[1];
-    // hasher_class.curr_node_val <== nodeVals[0];
-    hasher_class.node_attribute <== nodeAttributes[0];
-    hasher_class.node_threshold <== nodeThresholds[0]; //works
+    hashers[0] = HashNodes();
+    hashers[0].left_child_hash <== selectors[0].out[0];
+    hashers[0].right_child_hash <== selectors[0].out[1];
+    hashers[0].node_attribute <== nodeAttributes[0];
+    hashers[0].node_threshold <== nodeThresholds[0]; //works
 
     thresh_comp[0] = ThreshComp();
     thresh_comp[0].pathIndex <== pathIndices[0]; //position of class = (1-position of class's sibling)
     thresh_comp[0].input_val <== inputAttributes[0];
     thresh_comp[0].threshold_val <== nodeThresholds[0];
     
-
     var i = 1;
 
-    // builds the authenticated decision tree (ADT) from the level above leaf upto the just below root
+    // Builds the authenticated decision tree (ADT) from the level above leaf upto the just below root
     while (i < levels) {
-        //below should hash(left_child_hash, right_child_hash, curr_node_val, node_attribute, node_threshold)
-       
-        if(i == 1){
-            //orders left_child_val and right_child_val properly
-            selectors[i] = DualMux();
-            selectors[i].in[0] <== pathElementHashes[i];
-            selectors[i].in[1] <== hasher_class.hash;
-            selectors[i].s <== pathIndices[i];
-            hashers[i] = HashNodes();
-            hashers[i].left_child_hash <== selectors[i].out[0];
-            hashers[i].right_child_hash <== selectors[i].out[1];
-            hashers[i].curr_node_val <== nodeVals[i];
-            hashers[i].node_attribute <== nodeAttributes[i];
-            hashers[i].node_threshold <== nodeThresholds[i];
-        }
-        else{
-            //orders left_child_val and right_child_val properly
-            selectors[i] = DualMux();
-            selectors[i].in[0] <== pathElementHashes[i];
-            selectors[i].in[1] <== hashers[i - 1].hash;
-            selectors[i].s <== pathIndices[i];
-            hashers[i] = HashNodes();
-            hashers[i].left_child_hash <== selectors[i].out[0];
-            hashers[i].right_child_hash <== selectors[i].out[1];
-            hashers[i].curr_node_val <== nodeVals[i];
-            hashers[i].node_attribute <== nodeAttributes[i];
-            hashers[i].node_threshold <== nodeThresholds[i];
-        }
+        // Orders left_child_val and right_child_val properly
+        selectors[i] = DualMux();
+        selectors[i].in[0] <== pathElementHashes[i];
+        selectors[i].in[1] <== hashers[i - 1].hash;
+        selectors[i].s <== pathIndices[i];
+
+        // Hash(left_child_hash, right_child_hash, node_attribute, node_threshold)
+        hashers[i] = HashNodes();
+        hashers[i].left_child_hash <== selectors[i].out[0];
+        hashers[i].right_child_hash <== selectors[i].out[1];
+        hashers[i].node_attribute <== nodeAttributes[i];
+        hashers[i].node_threshold <== nodeThresholds[i];
         
-        //thresholdcomphere
+        // Threshold checking
         thresh_comp[i] = ThreshComp();
-        thresh_comp[i].pathIndex <== pathIndices[i]; //position of path = (1-position of path's sibling)
+        thresh_comp[i].pathIndex <== pathIndices[i];
         thresh_comp[i].input_val <== inputAttributes[i];
         thresh_comp[i].threshold_val <== nodeThresholds[i];
 
-        if(i==levels-1){
-            hasher_root = HashLeftRight();
-            hasher_root.left <== hashers[i].hash;
-            hasher_root.right <== randomness;
-            hash_root <== hasher_root.hash;
-            hash_dt <== hashers[i].hash;
-            root === hasher_root.hash;
-            
-        }
-
         i++;
     }
-        
-}
 
+    // Root hash checking
+    hasher_root = HashLeftRight();
+    hasher_root.left <== hashers[levels-1].hash;
+    hasher_root.right <== randomness;
+    hash_root <== hasher_root.hash;
+    hash_dt <== hashers[levels-1].hash;
+    root === hasher_root.hash;
+}
 
 component main { public [ leaf, root, inputAttributes ] } =  ADTChecker(10);
