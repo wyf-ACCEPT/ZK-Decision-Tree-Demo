@@ -50,16 +50,16 @@ template DualMux() {
 }
 
 // At each level ensures attribute comparison follows properly, assuming each val/threshold is 64 bits max
-// Assert true [if isLess=1, input<threshold] or [if isLess=0, input>=threshold], assert fails otherwise
+// Assert true [if is_less=1, input<threshold] or [if is_less=0, input>=threshold], assert fails otherwise
 template ThreshComp(){
-    signal input isLess;
+    signal input is_less;
     signal input input_val;
     signal input threshold_val;
  
     component isz = IsZero();
     component comp = LessThan(64);
     
-    isLess ==> isz.in;
+    is_less ==> isz.in;
     comp.in[0] <== input_val;
     comp.in[1] <== threshold_val;
     1 - isz.out === comp.out;
@@ -84,7 +84,6 @@ template ADTChecker(levels) {
     signal input randomness;
 
     component isz = IsZero();
-    component hashers[0];
     component hasher_root;
     component comp;
     component selectors[levels];
@@ -107,7 +106,7 @@ template ADTChecker(levels) {
     hashers[0].node_threshold <== nodeThresholds[0]; //works
 
     thresh_comp[0] = ThreshComp();
-    thresh_comp[0].pathIndex <== pathIndices[0]; //position of class = (1-position of class's sibling)
+    thresh_comp[0].is_less <== pathIndices[0]; //position of class = (1-position of class's sibling)
     thresh_comp[0].input_val <== inputAttributes[0];
     thresh_comp[0].threshold_val <== nodeThresholds[0];
     
@@ -130,7 +129,7 @@ template ADTChecker(levels) {
         
         // Threshold checking
         thresh_comp[i] = ThreshComp();
-        thresh_comp[i].pathIndex <== pathIndices[i];
+        thresh_comp[i].is_less <== pathIndices[i];
         thresh_comp[i].input_val <== inputAttributes[i];
         thresh_comp[i].threshold_val <== nodeThresholds[i];
 
