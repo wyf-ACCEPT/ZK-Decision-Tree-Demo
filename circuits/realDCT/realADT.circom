@@ -95,6 +95,8 @@ template ADTChecker(levels) {
     signal input node_thresholds[levels];
     signal input input_attributes[levels];
 
+    signal check_path[levels];
+
     component leaf_hasher = HashLeaf();
     component hasher_root = HashLeftRight();
     component selectors[levels];
@@ -103,18 +105,23 @@ template ADTChecker(levels) {
 
     signal output hash_root;
     var other_value;
+    var check_path_last_value;
 
     leaf_hasher.leaf_class <== leaf_class;
     leaf_hasher.leaf_location <== leaf_location;
 
-    // TODO: Check pathIndices and leaf_location!
+    // TODO: Check pathIndices and leaf_location! [done!]
 
     // Builds the authenticated decision tree (ADT) from the level above leaf upto the just below root
     for (var i=0; i<levels; i++) {
 
+        // Calculate the relation between location and indices
+        check_path_last_value = (i==0) ? leaf_location : check_path[i-1];
+        (check_path_last_value + path_indices[i] - 2) / 2 ==> check_path[i];
+
         // Orders left_child_val and right_child_val properly
-        selectors[i] = DualMux();
         other_value = (i==0) ? leaf_hasher.hash : hashers[i - 1].hash;
+        selectors[i] = DualMux();
         selectors[i].in[0] <== path_element_hashes[i];
         selectors[i].in[1] <== other_value;
         selectors[i].swap <== path_indices[i];
@@ -128,11 +135,13 @@ template ADTChecker(levels) {
         
         // Threshold checking
         thresh_comp[i] = ThreshComp();
-        log(node_thresholds[i], path_indices[i]);
         thresh_comp[i].is_less <== path_indices[i];
         thresh_comp[i].input_val <== input_attributes[i];
         thresh_comp[i].threshold_val <== node_thresholds[i];
     }
+
+    // Path indices checking
+    check_path[levels-1] === 0;
 
     // Root hash checking
     hasher_root.left <== hashers[levels-1].hash;
