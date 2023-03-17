@@ -4,3 +4,4 @@
 *.wasm
 node_modules
 *_js
+trusted-setup
