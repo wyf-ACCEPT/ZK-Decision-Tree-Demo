@@ -93,7 +93,7 @@ template ADTChecker(levels) {
     signal input path_indices[levels];
     signal input node_attributes[levels];
     signal input node_thresholds[levels];
-    signal input input_attributes[levels];
+    signal input input_attributes[levels];  // TODO: Change it to input_features
 
     signal check_path[levels];
 
