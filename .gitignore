@@ -3,3 +3,4 @@
 *.wtns
 *.wasm
 node_modules
+*_js

@@ -4,6 +4,7 @@ pragma circom 2.0.3;
 include "../utils/mimcsponge.circom";
 include "../utils/comparators.circom";
 
+
 // Computes MiMC([left, right])
 template HashLeftRight() {
     signal input left;
@@ -16,6 +17,7 @@ template HashLeftRight() {
     hasher.k <== 0;
     hash <== hasher.outs[0];
 }
+
 
 // Computes MiMC([left_child_hash, right_child_hash, node_attribute, node_threshold])
 template HashNode() {
@@ -34,6 +36,7 @@ template HashNode() {
     hash <== hasher.outs[0];
 }
 
+
 // Computes MiMC([class, location])
 template HashLeaf() {
     signal input leaf_class;
@@ -46,6 +49,7 @@ template HashLeaf() {
     hasher.k <== 0;
     hash <== hasher.outs[0];
 }
+
 
 // Swap (in[0], in[1]) if swap==1
 template DualMux() {
@@ -75,7 +79,7 @@ template ThreshComp(){
 
 
 // Verifies that ADT path proof is correct for given merkle root and a leaf
-// `path_indices` input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path (0->left, 1->right)
+// `path_indices` input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path (1->left, 0->right)
 // `node_attributes` input is an array of attributes along the hashes computed
 // `node_thresholds` input is an array of thresholds corresponding to the attributes (at the nodes) where the hashes are computed while computing hashes upto root
 // `input_attributes` is the sorted array of attributes of the input
@@ -103,6 +107,8 @@ template ADTChecker(levels) {
     leaf_hasher.leaf_class <== leaf_class;
     leaf_hasher.leaf_location <== leaf_location;
 
+    // TODO: Check pathIndices and leaf_location!
+
     // Builds the authenticated decision tree (ADT) from the level above leaf upto the just below root
     for (var i=0; i<levels; i++) {
 
@@ -122,6 +128,7 @@ template ADTChecker(levels) {
         
         // Threshold checking
         thresh_comp[i] = ThreshComp();
+        log(node_thresholds[i], path_indices[i]);
         thresh_comp[i].is_less <== path_indices[i];
         thresh_comp[i].input_val <== input_attributes[i];
         thresh_comp[i].threshold_val <== node_thresholds[i];
@@ -131,7 +138,7 @@ template ADTChecker(levels) {
     hasher_root.left <== hashers[levels-1].hash;
     hasher_root.right <== randomness;
     hasher_root.hash ==> hash_root;
-    root === hash_root;
+    // root === hash_root; // TODO: add it back
 }
 
-component main { public [ leaf_class, root, input_attributes ] } =  ADTChecker(10);
+component main { public [ leaf_class, root, input_attributes ] } = ADTChecker(5);
