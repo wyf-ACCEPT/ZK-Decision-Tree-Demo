@@ -10,7 +10,6 @@ template HashLeftRight() {
     signal input left;
     signal input right;
     signal output hash;
-
     component hasher = MiMCSponge(2, 220, 1);
 
     hasher.ins[0] <== left;
@@ -20,13 +19,12 @@ template HashLeftRight() {
 }
 
 // Computes MiMC([left_child_hash, right_child_hash, node_attribute, node_threshold])
-template HashNodes() {
+template HashNode() {
     signal input left_child_hash;
     signal input right_child_hash;
     signal input node_attribute;
     signal input node_threshold;
     signal output hash;
-
     component hasher = MiMCSponge(4, 220, 1);
 
     hasher.ins[0] <== left_child_hash;
@@ -36,6 +34,11 @@ template HashNodes() {
     hasher.k <== 0;
     hash <== hasher.outs[0];
 }
+
+// Computes MiMC([class, location])
+// template HashLeaf() {
+
+// }
 
 // if s == 0 returns [in[0], in[1]]
 // if s == 1 returns [in[1], in[0]]
@@ -83,45 +86,27 @@ template ADTChecker(levels) {
     signal input inputAttributes[levels];
     signal input randomness;
 
-    component isz = IsZero();
     component hasher_root;
-    component comp;
     component selectors[levels];
     component hashers[levels];
     component thresh_comp[levels];
 
     signal output hash_root;
-    signal output hash_dt;
 
-    //first hash class/leaf once
-    selectors[0] = DualMux();
-    selectors[0].in[0] <== pathElementHashes[0]; //the adjacent class
-    selectors[0].in[1] <== leaf; //the class
-    selectors[0].s <== pathIndices[0];
-
-    hashers[0] = HashNodes();
-    hashers[0].left_child_hash <== selectors[0].out[0];
-    hashers[0].right_child_hash <== selectors[0].out[1];
-    hashers[0].node_attribute <== nodeAttributes[0];
-    hashers[0].node_threshold <== nodeThresholds[0]; //works
-
-    thresh_comp[0] = ThreshComp();
-    thresh_comp[0].is_less <== pathIndices[0]; //position of class = (1-position of class's sibling)
-    thresh_comp[0].input_val <== inputAttributes[0];
-    thresh_comp[0].threshold_val <== nodeThresholds[0];
-    
-    var i = 1;
+    var other_value;
 
     // Builds the authenticated decision tree (ADT) from the level above leaf upto the just below root
-    while (i < levels) {
+    for (var i=0; i<levels; i++) {
+
         // Orders left_child_val and right_child_val properly
+        other_value = (i==0) ? leaf : hashers[i - 1].hash;
         selectors[i] = DualMux();
         selectors[i].in[0] <== pathElementHashes[i];
-        selectors[i].in[1] <== hashers[i - 1].hash;
+        selectors[i].in[1] <== other_value;
         selectors[i].s <== pathIndices[i];
 
         // Hash(left_child_hash, right_child_hash, node_attribute, node_threshold)
-        hashers[i] = HashNodes();
+        hashers[i] = HashNode();
         hashers[i].left_child_hash <== selectors[i].out[0];
         hashers[i].right_child_hash <== selectors[i].out[1];
         hashers[i].node_attribute <== nodeAttributes[i];
@@ -132,8 +117,6 @@ template ADTChecker(levels) {
         thresh_comp[i].is_less <== pathIndices[i];
         thresh_comp[i].input_val <== inputAttributes[i];
         thresh_comp[i].threshold_val <== nodeThresholds[i];
-
-        i++;
     }
 
     // Root hash checking
@@ -141,8 +124,7 @@ template ADTChecker(levels) {
     hasher_root.left <== hashers[levels-1].hash;
     hasher_root.right <== randomness;
     hash_root <== hasher_root.hash;
-    hash_dt <== hashers[levels-1].hash;
-    root === hasher_root.hash;
+    root === hash_root;
 }
 
 component main { public [ leaf, root, inputAttributes ] } =  ADTChecker(10);
