@@ -3,21 +3,30 @@ pragma circom 2.0.3;
 // include "https://github.com/0xPARC/circom-secp256k1/blob/master/circuits/bigint.circom";
 
 include "./hashtree.circom";
-include "../utils/switcher.circom";
+include "../utils/bitify.circom";
 include "../utils/comparators.circom";
+include "../utils/mux4.circom";
+include "../utils/switcher.circom";
 
 
 // At each level ensures attribute comparison follows properly, assuming each val/threshold is 64 bits max
 // Assert true [if is_less=1, input<threshold] or [if is_less=0, input>=threshold], assert fails otherwise
-template ThreshComp(){
+template ThreshComp(features) {
     signal input is_less;
-    signal input input_val;
     signal input threshold_val;
+    signal input feature_idx;
+    signal input input_values[features];
+
+    component num2bit = Num2Bits(4);
+    component mux4 = Mux4();
     component isz = IsZero();
     component comp = LessThan(64);
     
+    num2bit.in <== feature_idx;
+    mux4.s <== num2bit.out;
+    mux4.c <== input_values;
+    comp.in[0] <== mux4.out;
     is_less ==> isz.in;
-    comp.in[0] <== input_val;
     comp.in[1] <== threshold_val;
     1 - isz.out === comp.out;
 }
@@ -29,24 +38,25 @@ template ThreshComp(){
 // `node_thresholds` input is an array of thresholds corresponding to the attributes (at the nodes) where the hashes are computed while computing hashes upto root
 // `input_attributes` is the sorted array of attributes of the input
 // `leaf` is the class of the input as predicted by the DT
-template ADTChecker(levels) {
+template ADTChecker(depth, features) {
     signal input leaf_class;
     signal input leaf_location;
     signal input randomness;
     signal input root;
-    signal input path_element_hashes[levels];
-    signal input path_indices[levels];
-    signal input node_attributes[levels];
-    signal input node_thresholds[levels];
-    signal input input_attributes[levels];  // TODO: Change it to input_features
+    signal input path_element_hashes[depth];
+    signal input path_indices[depth];
+    signal input node_attributes[depth];
+    signal input node_thresholds[depth];
+    // signal input input_attributes[depth];  // TODO: Change it to input_features [Done!]
+    signal input input_attributes[features];
 
-    signal check_path[levels];
+    signal check_path[depth];
 
     component leaf_hasher = HashLeaf();
     component hasher_root = HashLeftRight();
-    component selectors[levels];
-    component hashers[levels];
-    component thresh_comp[levels];
+    component selectors[depth];
+    component hashers[depth];
+    component thresh_comp[depth];
 
     signal output hash_root;
     var other_value;
@@ -58,7 +68,7 @@ template ADTChecker(levels) {
     // TODO: Check pathIndices and leaf_location! [done!]
 
     // Builds the authenticated decision tree (ADT) from the level above leaf upto the just below root
-    for (var i=0; i<levels; i++) {
+    for (var i=0; i<depth; i++) {
 
         // Calculate the relation between location and indices
         check_path_last_value = (i==0) ? leaf_location : check_path[i-1];
@@ -79,20 +89,21 @@ template ADTChecker(levels) {
         hashers[i].node_threshold <== node_thresholds[i];
         
         // Threshold checking
-        thresh_comp[i] = ThreshComp();
+        thresh_comp[i] = ThreshComp(features);
         thresh_comp[i].is_less <== path_indices[i];
-        thresh_comp[i].input_val <== input_attributes[i];
         thresh_comp[i].threshold_val <== node_thresholds[i];
+        thresh_comp[i].feature_idx <== node_attributes[i];
+        thresh_comp[i].input_values <== input_attributes;
     }
 
     // Path indices checking
-    check_path[levels-1] === 0;
+    check_path[depth-1] === 0;
 
     // Root hash checking
-    hasher_root.left <== hashers[levels-1].hash;
+    hasher_root.left <== hashers[depth-1].hash;
     hasher_root.right <== randomness;
     hasher_root.hash ==> hash_root;
     // root === hash_root; // TODO: add it back
 }
 
-component main { public [ leaf_class, root, input_attributes ] } = ADTChecker(5);
+component main { public [ leaf_class, root, input_attributes ] } = ADTChecker(5, 16);
