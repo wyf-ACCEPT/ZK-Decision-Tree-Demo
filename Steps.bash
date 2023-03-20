@@ -9,6 +9,9 @@ snarkjs ri <name>.r1cs                  # r1cs info
 snarkjs rp <name>.r1cs <name>.sym       # r1cs print
 snarkjs rej <name>.r1cs <name>.json     # r1cs export json
 
+## b. Continuous commands
+circom realADT.circom --r1cs --wasm --sym; cd realADT_js; node generate_witness.js realADT.wasm ../input.json witness.wtns; cd ..
+
 
 ## 3. Proving circuits with ZK: see https://docs.circom.io/getting-started/proving-circuits/
 

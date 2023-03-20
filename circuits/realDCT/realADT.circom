@@ -1,66 +1,11 @@
 pragma circom 2.0.3;
 // Based on "Zero-knowledge proofs for decision tree predictions and accuracy": https://dl.acm.org/doi/pdf/10.1145/3372297.3417278
 // include "https://github.com/0xPARC/circom-secp256k1/blob/master/circuits/bigint.circom";
-include "../utils/mimcsponge.circom";
+
+include "./hashtree.circom";
+include "../utils/switcher.circom";
 include "../utils/comparators.circom";
 
-
-// Computes MiMC([left, right])
-template HashLeftRight() {
-    signal input left;
-    signal input right;
-    signal output hash;
-    component hasher = MiMCSponge(2, 220, 1);
-
-    hasher.ins[0] <== left;
-    hasher.ins[1] <== right;
-    hasher.k <== 0;
-    hash <== hasher.outs[0];
-}
-
-
-// Computes MiMC([left_child_hash, right_child_hash, node_attribute, node_threshold])
-template HashNode() {
-    signal input left_child_hash;
-    signal input right_child_hash;
-    signal input node_attribute;
-    signal input node_threshold;
-    signal output hash;
-    component hasher = MiMCSponge(4, 220, 1);
-
-    hasher.ins[0] <== left_child_hash;
-    hasher.ins[1] <== right_child_hash;
-    hasher.ins[2] <== node_attribute;
-    hasher.ins[3] <== node_threshold;
-    hasher.k <== 0;
-    hash <== hasher.outs[0];
-}
-
-
-// Computes MiMC([class, location])
-template HashLeaf() {
-    signal input leaf_class;
-    signal input leaf_location;
-    signal output hash;
-    component hasher = MiMCSponge(2, 220, 1);
-
-    hasher.ins[0] <== leaf_class;
-    hasher.ins[1] <== leaf_location;
-    hasher.k <== 0;
-    hash <== hasher.outs[0];
-}
-
-
-// Swap (in[0], in[1]) if swap==1
-template DualMux() {
-    signal input in[2];
-    signal input swap;
-    signal output out[2];
-
-    out[0] <== (in[1] - in[0]) * swap + in[0];
-    out[1] <== (in[0] - in[1]) * swap + in[1];
-    swap * (1 - swap) === 0;
-}
 
 // At each level ensures attribute comparison follows properly, assuming each val/threshold is 64 bits max
 // Assert true [if is_less=1, input<threshold] or [if is_less=0, input>=threshold], assert fails otherwise
@@ -121,15 +66,15 @@ template ADTChecker(levels) {
 
         // Orders left_child_val and right_child_val properly
         other_value = (i==0) ? leaf_hasher.hash : hashers[i - 1].hash;
-        selectors[i] = DualMux();
-        selectors[i].in[0] <== path_element_hashes[i];
-        selectors[i].in[1] <== other_value;
-        selectors[i].swap <== path_indices[i];
+        selectors[i] = Switcher();
+        selectors[i].L <== path_element_hashes[i];
+        selectors[i].R <== other_value;
+        selectors[i].sel <== path_indices[i];
 
         // Hash(left_child_hash, right_child_hash, node_attribute, node_threshold)
         hashers[i] = HashNode();
-        hashers[i].left_child_hash <== selectors[i].out[0];
-        hashers[i].right_child_hash <== selectors[i].out[1];
+        hashers[i].left_child_hash <== selectors[i].outL;
+        hashers[i].right_child_hash <== selectors[i].outR;
         hashers[i].node_attribute <== node_attributes[i];
         hashers[i].node_threshold <== node_thresholds[i];
         

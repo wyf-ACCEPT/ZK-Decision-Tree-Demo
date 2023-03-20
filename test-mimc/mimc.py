@@ -244,7 +244,7 @@ class FieldNumber:
     
     def __pow__(self, other):
         result = self.copy()
-        for i in range(other-1):
+        for _ in range(other-1):
             result = self * result
         return result
     
