@@ -16,7 +16,7 @@ template ThreshComp(features) {
     signal input feature_idx;
     signal input input_values[features];
 
-    component num2bit = Num2Bits(4);
+    component num2bit = Num2Bits(4);    // [NOTICE] Only for <16 features for now!
     component mux4 = Mux4();
     component isz = IsZero();
     component comp = LessThan(64);
@@ -92,6 +92,7 @@ template ADTChecker(depth, features) {
         thresh_comp[i].threshold_val <== node_thresholds[i];
         thresh_comp[i].feature_idx <== node_attributes[i];
         thresh_comp[i].input_values <== input_attributes;
+        log(hashers[i].hash);
     }
 
     // Path indices checking

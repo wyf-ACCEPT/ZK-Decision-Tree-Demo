@@ -28,7 +28,7 @@ snarkjs groth16 prove multiplier2_0001.zkey witness.wtns proof.json public.json
 # 4. A specific pipeline: 
 
 # 4.1 trusted setup
-POWER=10; CIRCOM="calculate-mimc"
+POWER=10; CIRCOM="realADT"
 mkdir trusted-setup; cd trusted-setup
 snarkjs powersoftau new bn128 $POWER pot${POWER}_00.ptau -v
 snarkjs powersoftau contribute pot${POWER}_00.ptau pot${POWER}_01.ptau -v

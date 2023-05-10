@@ -252,6 +252,7 @@ class FieldNumber:
         return str(self.number)
 
 Zero = FieldNumber(0)
+C = [FieldNumber(c) for c in C_origin]
 
 
 class MiMCFeistel:
@@ -303,18 +304,17 @@ class MiMCSponge:
         
         return outs
     
-    
-C = [FieldNumber(c) for c in C_origin]
 
-hash = MiMCFeistel(10)
-xL_in = FieldNumber(10)
-xR_in = FieldNumber(20)
-k = Zero
-res = hash.run(xL_in, xR_in, k)
-print(res[0], res[1])
+if __name__ == '__main__':
+    hash = MiMCFeistel(10)
+    xL_in = FieldNumber(10)
+    xR_in = FieldNumber(20)
+    k = Zero
+    res = hash.run(xL_in, xR_in, k)
+    print(res[0], res[1])
 
-hash_multi = MiMCSponge(3, 5, 7)
-res_multi = hash_multi.run(
-    [FieldNumber(k) for k in (4, 6, 8)], Zero
-)
-print(*res_multi, sep='\n')
+    hash_multi = MiMCSponge(3, 5, 7)
+    res_multi = hash_multi.run(
+        [FieldNumber(k) for k in (4, 6, 8)], Zero
+    )
+    print(*res_multi, sep='\n')
