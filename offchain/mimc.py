@@ -274,7 +274,8 @@ class MiMCFeistel:
                 xR_out = xR[i-1] + t ** 5
                 xL_out = xL[i-1]
         return xL_out, xR_out
-    
+
+
 
 class MiMCSponge:
     
@@ -282,27 +283,39 @@ class MiMCSponge:
         self.nInputs = nInputs
         self.nRounds = nRounds
         self.nOutputs = nOutputs
+        self.mimcfeistel = MiMCFeistel(nRounds)
         
-    def run(self, ins: List[FieldNumber], k: FieldNumber) -> List[FieldNumber]:
+        
+    def run_strict(self, ins: List[FieldNumber], K: FieldNumber = Zero) -> List[FieldNumber]:
         assert len(ins) == self.nInputs
-        M = MiMCFeistel(self.nRounds)
         outs = []
 
         for i in range(self.nInputs):
-            xL_this, xR_this = M.run(
+            xL_this, xR_this = self.mimcfeistel.run(
                 ins[0] if i == 0 else xL_last + ins[i],
-                Zero if i == 0 else xR_last, k
+                Zero if i == 0 else xR_last, K
             )
             xL_last, xR_last = xL_this, xR_this
         
         outs.append(xL_last)
         
         for i in range(self.nOutputs - 1):
-            xL_this, xR_this = M.run(xL_last, xR_last, k)
+            xL_this, xR_this = self.mimcfeistel.run(xL_last, xR_last, K)
             xL_last, xR_last = xL_this, xR_this
             outs.append(xL_this)
         
         return outs
+    
+    
+    def run_nto1(self, ins: List[FieldNumber], K: FieldNumber = Zero) -> FieldNumber:
+        for i in range(len(ins)):
+            xL_this, xR_this = self.mimcfeistel.run(
+                ins[0] if i == 0 else xL_last + ins[i],
+                Zero if i == 0 else xR_last, K
+            )
+            xL_last, xR_last = xL_this, xR_this
+            
+        return xL_last
     
 
 if __name__ == '__main__':
@@ -315,6 +328,6 @@ if __name__ == '__main__':
 
     hash_multi = MiMCSponge(3, 5, 7)
     res_multi = hash_multi.run(
-        [FieldNumber(k) for k in (4, 6, 8)], Zero
+        [FieldNumber(k) for k in (4, 6, 8)]
     )
     print(*res_multi, sep='\n')

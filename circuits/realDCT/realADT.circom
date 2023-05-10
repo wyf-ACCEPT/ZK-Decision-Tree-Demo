@@ -62,6 +62,8 @@ template ADTChecker(depth, features) {
 
     leaf_hasher.leaf_class <== leaf_class;
     leaf_hasher.leaf_location <== leaf_location;
+    // log(leaf_location);
+    // log(leaf_hasher.hash);
 
     // TODO: Check pathIndices and leaf_location! [done!]
 
@@ -92,7 +94,9 @@ template ADTChecker(depth, features) {
         thresh_comp[i].threshold_val <== node_thresholds[i];
         thresh_comp[i].feature_idx <== node_attributes[i];
         thresh_comp[i].input_values <== input_attributes;
-        log(hashers[i].hash);
+
+        // log(check_path[i]);
+        // log(hashers[i].hash);
     }
 
     // Path indices checking
@@ -102,7 +106,7 @@ template ADTChecker(depth, features) {
     hasher_root.left <== hashers[depth-1].hash;
     hasher_root.right <== randomness;
     hasher_root.hash ==> hash_root;
-    // root === hash_root; // TODO: add it back
+    root === hash_root; // TODO: add it back
 }
 
 component main { public [ leaf_class, root, input_attributes ] } = ADTChecker(5, 16);
