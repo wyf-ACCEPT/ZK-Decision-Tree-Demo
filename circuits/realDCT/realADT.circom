@@ -9,8 +9,7 @@ include "../utils/mux4.circom";
 include "../utils/switcher.circom";
 
 
-// At each level ensures attribute comparison follows properly, assuming each val/threshold is 64 bits max
-// Assert true [if is_less=1, input<threshold] or [if is_less=0, input>=threshold], assert fails otherwise
+// At each level ensures attribute comparison follows properly, assuming each val/threshold is 64 bits max. Assert true [if is_less=1, input<threshold] or [if is_less=0, input>=threshold], assert fails otherwise.
 template ThreshComp(features) {
     signal input is_less;
     signal input threshold_val;
@@ -32,12 +31,13 @@ template ThreshComp(features) {
 }
 
 
-// Verifies that ADT path proof is correct for given merkle root and a leaf
+// Verifies that ADT path proof is correct for given merkle root and a leaf.
 // `path_indices` input is an array of 0/1 selectors telling whether given pathElement is on the left or right side of merkle path (1->left, 0->right)
 // `node_attributes` input is an array of attributes along the hashes computed
 // `node_thresholds` input is an array of thresholds corresponding to the attributes (at the nodes) where the hashes are computed while computing hashes upto root
-// `input_attributes` is the sorted array of attributes of the input
+// `input_attributes` is the values of the input feature
 // `leaf` is the class of the input as predicted by the DT
+// `check_path` checks whether `leaf_location` and `path_indices` is match
 template ADTChecker(depth, features) {
     signal input leaf_class;
     signal input leaf_location;
@@ -47,9 +47,7 @@ template ADTChecker(depth, features) {
     signal input path_indices[depth];
     signal input node_attributes[depth];
     signal input node_thresholds[depth];
-    // signal input input_attributes[depth];  // TODO: Change it to input_features [Done!]
     signal input input_attributes[features];
-
     signal check_path[depth];
 
     component leaf_hasher = HashLeaf();
